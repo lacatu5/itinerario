@@ -1,0 +1,26 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.gateway.name }}
+  namespace: {{ .Values.namespace.name | quote }}
+  labels:
+    {{- include "itinerario.labels" . | nindent 4 }}
+    app: {{ .Values.gateway.name }}
+  annotations:
+    {{- with .Values.gateway.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  gatewayClassName: {{ .Values.gateway.className }}
+  listeners:
+    {{- range .Values.gateway.listeners }}
+    - name: {{ .name }}
+      hostname: {{ .hostname }}
+      port: {{ .port }}
+      protocol: {{ .protocol }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+    {{- end }}
+{{- end }}

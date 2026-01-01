@@ -1,0 +1,99 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "core"
+version = "0.1.0"
+description = "Shared utilities and components for Itinerario services"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+authors = [
+    {name = "Itinerario Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "fastapi-pagination>=0.12.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "loguru>=0.7.0",
+    "firebase-admin>=6.2.0",
+]
+
+[project.optional-dependencies]
+sql = [
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+]
+firestore = [
+    "google-cloud-firestore==2.11.1",
+    "fireo==2.2.2",
+]
+storage = [
+    "google-cloud-storage>=2.10.0",
+]
+centrifugo = [
+    "cent>=5.0.0",
+    "pyjwt>=2.8.0",
+]
+all = [
+    "core[sql,firestore,storage,centrifugo]",
+]
+dev = [
+    "core[all]",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "httpx>=0.25.0",
+    "aiosqlite>=0.19.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+]
+
+[tool.setuptools]
+packages = ["core", "core.database", "core.firestore", "core.storage", "core.auth", "core.messaging"]
+
+[tool.setuptools.package-data]
+core = ["py.typed"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "*.egg-info",
+    ".ruff_cache",
+    "node_modules",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+]
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"*/tests/*" = ["F841", "E402"]  # Allow unused vars and module-level imports in test files
+"scripts/seeder/*" = ["F821"]  # Ignore undefined logger in seeder scripts
+"*/alembic/*" = ["E402"]  # Allow module-level imports in alembic env files
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

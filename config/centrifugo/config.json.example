@@ -1,0 +1,29 @@
+{
+  "v3_use_offset": true,
+  "token_hmac_secret_key": "YOUR_CENTRIFUGO_HMAC_SECRET",
+  "api_key": "YOUR_CENTRIFUGO_API_KEY",
+  "admin_password": "YOUR_ADMIN_PASSWORD",
+  "admin_secret": "YOUR_ADMIN_SECRET",
+  "namespaces": [
+    {
+      "name": "chat",
+      "publish": false,
+      "subscribe_to_publish": false,
+      "publish_to_publish": false,
+      "subscribe": true,
+      "presence": true,
+      "join_leave": true,
+      "history_size": 100,
+      "history_ttl": 300,
+      "force_recovery": true
+    }
+  ],
+  "client_insecure": false,
+  "admin_insecure": false,
+  "api_insecure": false,
+  "allowed_origins": [
+    "https://your-domain.com",
+    "http://localhost:5173",
+    "http://localhost:3000"
+  ]
+}

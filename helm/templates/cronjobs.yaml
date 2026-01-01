@@ -1,0 +1,43 @@
+{{- range .Values.cronjobs }}
+{{- if .enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace.name | quote }}
+  labels:
+    {{- include "itinerario.labels" $ | nindent 4 }}
+spec:
+  schedule: {{ .schedule | quote }}
+  timeZone: {{ .timeZone | default "UTC" | quote }}
+  concurrencyPolicy: {{ .concurrencyPolicy | default "Forbid" }}
+  successfulJobsHistoryLimit: {{ .successfulJobsHistoryLimit | default 3 }}
+  failedJobsHistoryLimit: {{ .failedJobsHistoryLimit | default 1 }}
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: {{ .activeDeadlineSeconds | default 600 }}
+      backoffLimit: {{ .backoffLimit | default 3 }}
+      template:
+        metadata:
+          labels:
+            app: {{ .name }}
+        spec:
+          serviceAccountName: {{ include "itinerario.serviceAccountName" $ }}
+          restartPolicy: {{ .restartPolicy | default "OnFailure" }}
+          containers:
+          - name: {{ .name }}
+            image: {{ $.Values.imageRegistry }}/{{ .image.repository }}:{{ .image.tag | default $.Chart.AppVersion }}
+            imagePullPolicy: {{ $.Values.imagePullPolicy }}
+            {{- if .command }}
+            command:
+              {{- toYaml .command | nindent 14 }}
+            {{- end }}
+            env:
+            {{- with .env }}
+            {{- toYaml . | nindent 14 }}
+            {{- end }}
+            resources:
+              {{- toYaml .resources | nindent 14 }}
+---
+{{- end }}
+{{- end }}

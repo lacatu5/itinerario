@@ -1,0 +1,28 @@
+{
+  "testEnvironment": "jsdom",
+  "setupFilesAfterEnv": ["<rootDir>/src/setupTests.js"],
+  "moduleNameMapper": {
+    "\\.(css|less|scss|sass)$": "<rootDir>/src/__mocks__/styleMock.js",
+    "^@components/(.*)$": "<rootDir>/src/components/$1",
+    "^@pages/(.*)$": "<rootDir>/src/pages/$1",
+    "^@services/(.*)$": "<rootDir>/src/services/$1",
+    "^@hooks/(.*)$": "<rootDir>/src/hooks/$1",
+    "^@utils/(.*)$": "<rootDir>/src/utils/$1"
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!(react-leaflet|leaflet)/)"
+  ],
+  "transform": {
+    "^.+\\.(js|jsx)$": "babel-jest"
+  },
+  "collectCoverageFrom": [
+    "src/**/*.{js,jsx}",
+    "!src/main.jsx",
+    "!src/vite-env",
+    "!src/**/*.test.{js,jsx}"
+  ],
+  "testMatch": [
+    "**/__tests__/**/*.[jt]s?(x)",
+    "**/?(*.)+(spec|test).[jt]s?(x)"
+  ]
+}

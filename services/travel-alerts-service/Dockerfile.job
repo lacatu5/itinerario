@@ -1,0 +1,24 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml ./shared-pyproject.toml
+COPY core ./core
+RUN mv shared-pyproject.toml pyproject.toml && \
+    pip install --no-cache-dir . && \
+    rm pyproject.toml
+
+COPY services/travel-alerts-service/pyproject.toml ./pyproject.toml
+RUN pip install --no-cache-dir -e .
+
+COPY services/travel-alerts-service/app ./app
+
+RUN useradd --create-home --shell /bin/bash app \
+    && chown -R app:app /app
+USER app
+
+CMD ["python", "-m", "app.jobs.sync_warnings"]

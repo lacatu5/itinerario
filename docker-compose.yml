@@ -1,0 +1,269 @@
+services:
+  firebase-emulator:
+    image: spine3/firebase-emulator:latest
+    container_name: firebase-emulator
+    ports:
+      - "8080:8080"
+      - "9099:9099"
+    environment:
+      - GCP_PROJECT=${GOOGLE_CLOUD_PROJECT:-itinerario-dev}
+    networks:
+      - itinerary-network
+
+  storage-emulator:
+    image: fsouza/fake-gcs-server:latest
+    container_name: storage-emulator
+    ports:
+      - "4443:4443"
+    command: -scheme http -port 4443 -public-host localhost:4443
+    networks:
+      - itinerary-network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - itinerary-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-itinerario}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build:
+      context: .
+      dockerfile: ./services/user-service/Dockerfile
+    container_name: user-service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./services/user-service:/app:cached
+      - ./core:/app/core:cached
+      - ./shared:/app/shared:cached
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=local
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-itinerario-dev}
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8080
+      - STORAGE_EMULATOR_HOST=http://storage-emulator:4443
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      firebase-emulator:
+        condition: service_started
+      storage-emulator:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    networks:
+      - itinerary-network
+
+  itinerary-service:
+    build:
+      context: .
+      dockerfile: ./services/itinerary-service/Dockerfile
+    container_name: itinerary-service
+    ports:
+      - "8002:8000"
+    volumes:
+      - ./services/itinerary-service:/app:cached
+      - ./core:/app/core:cached
+      - ./shared:/app/shared:cached
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=local
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-itinerario-dev}
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8080
+      - STORAGE_EMULATOR_HOST=http://storage-emulator:4443
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      firebase-emulator:
+        condition: service_started
+      storage-emulator:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    networks:
+      - itinerary-network
+
+  chat-service:
+    build:
+      context: .
+      dockerfile: ./services/chat-service/Dockerfile
+    container_name: chat-service
+    ports:
+      - "8003:8000"
+    volumes:
+      - ./services/chat-service:/app:cached
+      - ./shared:/app/shared:cached
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=local
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-itinerario-dev}
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8080
+      - CENTRIFUGO_API_URL=http://centrifugo:8000/api
+      - CENTRIFUGO_API_KEY=centrifugo-api-key-local
+      - CENTRIFUGO_HMAC_SECRET_KEY=centrifugo-hmac-secret-local
+      - CENTRIFUGO_WS_URL=ws://localhost:8443/connection/websocket
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      firebase-emulator:
+        condition: service_started
+      centrifugo:
+        condition: service_started
+    networks:
+      - itinerary-network
+
+  social-service:
+    build:
+      context: .
+      dockerfile: ./services/social-service/Dockerfile
+    container_name: social-service
+    ports:
+      - "8004:8000"
+    volumes:
+      - ./services/social-service:/app:cached
+      - ./shared:/app/shared:cached
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=local
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-itinerario-dev}
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8080
+      - CENTRIFUGO_API_URL=http://centrifugo:8000/api
+      - CENTRIFUGO_API_KEY=centrifugo-api-key-local
+      - CENTRIFUGO_HMAC_SECRET_KEY=centrifugo-hmac-secret-local
+      - CENTRIFUGO_WS_URL=ws://localhost:8443/connection/websocket
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      firebase-emulator:
+        condition: service_started
+      centrifugo:
+        condition: service_started
+    networks:
+      - itinerary-network
+
+  travel-alerts-service:
+    build:
+      context: .
+      dockerfile: ./services/travel-alerts-service/Dockerfile
+    container_name: travel-alerts-service
+    ports:
+      - "8005:8000"
+    volumes:
+      - ./services/travel-alerts-service:/app:cached
+      - ./core:/app/core:cached
+      - ./shared:/app/shared:cached
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=local
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-itinerario-dev}
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8080
+      - STORAGE_EMULATOR_HOST=http://storage-emulator:4443
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      firebase-emulator:
+        condition: service_started
+      storage-emulator:
+        condition: service_started
+    networks:
+      - itinerary-network
+
+  destinations-service:
+    build:
+      context: .
+      dockerfile: ./services/destinations-service/Dockerfile
+    container_name: destinations-service
+    ports:
+      - "8006:8000"
+    volumes:
+      - ./services/destinations-service:/app:cached
+      - ./core:/app/core:cached
+      - ./shared:/app/shared:cached
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONPATH=/app
+      - ENVIRONMENT=local
+      - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT:-itinerario-dev}
+      - FIREBASE_AUTH_EMULATOR_HOST=firebase-emulator:9099
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8080
+      - STORAGE_EMULATOR_HOST=http://storage-emulator:4443
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      firebase-emulator:
+        condition: service_started
+      storage-emulator:
+        condition: service_started
+    networks:
+      - itinerary-network
+
+  centrifugo:
+    image: centrifugo/centrifugo:v5
+    container_name: centrifugo
+    ports:
+      - "8443:8000"
+    volumes:
+      - ./config/centrifugo/config.json:/centrifugo/config.json
+    command: centrifugo --config=/centrifugo/config.json --admin_insecure --api_insecure
+    networks:
+      - itinerary-network
+
+  frontend-service:
+    build:
+      context: .
+      dockerfile: ./services/frontend-service/Dockerfile.dev
+    container_name: frontend-service
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./services/frontend-service:/app:cached
+      - /app/node_modules
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8001
+      - VITE_CENTRIFUGO_WS_URL=ws://localhost:8443/connection/websocket
+    command: npm run dev
+    networks:
+      - itinerary-network
+
+volumes:
+  postgres_data:
+
+networks:
+  itinerary-network:
+    driver: bridge

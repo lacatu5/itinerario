@@ -1,0 +1,147 @@
+{{- range .Values.services }}
+{{- if .enabled }}
+{{- if eq .name "centrifugo" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace.name | quote }}
+  labels:
+    {{- include "itinerario.labels" $ | nindent 4 }}
+    app: {{ .name }}
+spec:
+  replicas: {{ .replicas }}
+  selector:
+    matchLabels:
+      app: {{ .name }}
+  template:
+    metadata:
+      labels:
+        {{- include "itinerario.labels" $ | nindent 8 }}
+        app: {{ .name }}
+    spec:
+      serviceAccountName: {{ include "itinerario.serviceAccountName" $ }}
+      containers:
+      - name: {{ .name }}
+        image: {{ .image.repository }}:{{ .image.tag }}
+        imagePullPolicy: {{ $.Values.imagePullPolicy }}
+        command: ["centrifugo"]
+        args:
+          - "-c"
+          - "/centrifugo/config.json"
+        ports:
+        - name: {{ .portName | default "http" }}
+          containerPort: {{ .containerPort }}
+          protocol: TCP
+        env:
+        {{- with .env }}
+        {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: config
+          mountPath: /centrifugo
+          readOnly: true
+        {{- if .livenessProbe }}
+        livenessProbe:
+          httpGet:
+            path: {{ .livenessProbe.path | default "/health" }}
+            port: {{ .containerPort }}
+          initialDelaySeconds: {{ .livenessProbe.initialDelaySeconds | default 30 }}
+          periodSeconds: {{ .livenessProbe.periodSeconds | default 30 }}
+        {{- end }}
+        {{- if .readinessProbe }}
+        readinessProbe:
+          httpGet:
+            path: {{ .readinessProbe.path | default "/health" }}
+            port: {{ .containerPort }}
+          initialDelaySeconds: {{ .readinessProbe.initialDelaySeconds | default 5 }}
+          periodSeconds: {{ .readinessProbe.periodSeconds | default 10 }}
+        {{- end }}
+        resources:
+          {{- $serviceResources := index $.Values.serviceResources .name }}
+          {{- if $serviceResources }}
+          {{- toYaml $serviceResources | nindent 12 }}
+          {{- else }}
+          {{- toYaml .resources | nindent 12 }}
+          {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: centrifugo-config
+{{- else }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace.name | quote }}
+  labels:
+    {{- include "itinerario.labels" $ | nindent 4 }}
+    app: {{ .name }}
+spec:
+  replicas: {{ .replicas }}
+  selector:
+    matchLabels:
+      app: {{ .name }}
+  template:
+    metadata:
+      labels:
+        {{- include "itinerario.labels" $ | nindent 8 }}
+        app: {{ .name }}
+    spec:
+      serviceAccountName: {{ include "itinerario.serviceAccountName" $ }}
+      containers:
+      - name: {{ .name }}
+        image: {{ $.Values.imageRegistry }}/{{ .image.repository }}:{{ .image.tag | default $.Chart.AppVersion }}
+        imagePullPolicy: {{ $.Values.imagePullPolicy }}
+        ports:
+        - name: {{ .portName | default "http" }}
+          containerPort: {{ .containerPort }}
+          protocol: TCP
+        env:
+        {{- with .env }}
+        {{- toYaml . | nindent 10 }}
+        {{- end }}
+        envFrom:
+        - secretRef:
+            name: itinerario-secrets
+        {{- if .livenessProbe }}
+        livenessProbe:
+          httpGet:
+            path: {{ .livenessProbe.path | default "/health" }}
+            port: {{ .containerPort }}
+          initialDelaySeconds: {{ .livenessProbe.initialDelaySeconds | default 30 }}
+          periodSeconds: {{ .livenessProbe.periodSeconds | default 30 }}
+        {{- end }}
+        {{- if .readinessProbe }}
+        readinessProbe:
+          httpGet:
+            path: {{ .readinessProbe.path | default "/health" }}
+            port: {{ .containerPort }}
+          initialDelaySeconds: {{ .readinessProbe.initialDelaySeconds | default 5 }}
+          periodSeconds: {{ .readinessProbe.periodSeconds | default 10 }}
+        {{- end }}
+        resources:
+          {{- $serviceResources := index $.Values.serviceResources .name }}
+          {{- if $serviceResources }}
+          {{- toYaml $serviceResources | nindent 12 }}
+          {{- else }}
+          {{- toYaml .resources | nindent 12 }}
+          {{- end }}
+      {{- if .cloudSqlProxy.enabled }}
+      - name: cloud-sql-proxy
+        image: "{{ $.Values.cloudSqlProxy.image.repository }}:{{ $.Values.cloudSqlProxy.image.tag }}"
+        command:
+        - "/cloud-sql-proxy"
+        - "--private-ip"
+        - "{{ $.Values.cloudSqlProxy.connectionName }}"
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+        resources:
+          {{- toYaml $.Values.cloudSqlProxy.resources | nindent 12 }}
+      {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

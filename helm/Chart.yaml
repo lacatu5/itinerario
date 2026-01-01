@@ -1,0 +1,16 @@
+apiVersion: v2
+name: itinerario
+description: A Helm chart for Itinerario travel application services
+type: application
+version: 0.1.0
+appVersion: "latest"
+keywords:
+  - travel
+  - services
+  - gke
+home: https://github.com/lacatu5/itinerario
+sources:
+  - https://github.com/lacatu5/itinerario
+maintainers:
+  - name: Itinerario Team
+    email: team@itinerario.com

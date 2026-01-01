@@ -1,0 +1,26 @@
+# Common variables
+project_id = "YOUR_PROJECT_ID"
+region     = "europe-west1"
+
+# Staging configuration
+staging_node_count        = 1
+staging_machine_type      = "e2-medium"
+staging_disk_size_gb      = 20
+staging_min_nodes         = 1
+staging_max_nodes         = 3
+staging_database_tier     = "db-f1-micro"
+staging_database_disk_size = 10
+staging_database_password = "CHANGE_ME_STAGING_PASSWORD"
+
+# Production configuration
+prod_node_count        = 2
+prod_machine_type      = "e2-medium"
+prod_disk_size_gb      = 30
+prod_min_nodes         = 2
+prod_max_nodes         = 6
+prod_database_tier     = "db-g6-small"
+prod_database_disk_size = 20
+prod_database_password = "CHANGE_ME_PROD_PASSWORD"
+
+# Service accounts
+node_service_account_email = "gke-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com"

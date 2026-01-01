@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "core"
+version = "0.1.0"
+description = "Core shared package for Itinerario platform"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+authors = [
+    {name = "Itinerario Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "fastapi-pagination>=0.12.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "loguru>=0.7.0",
+    "firebase-admin>=6.2.0",
+]
+
+[project.optional-dependencies]
+sql = [
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+]
+firestore = [
+    "google-cloud-firestore==2.11.1",
+    "fireo==2.2.2",
+]
+storage = [
+    "google-cloud-storage>=2.10.0",
+]
+centrifugo = [
+    "cent>=5.0.0",
+    "pyjwt>=2.8.0",
+]
+all = [
+    "core[sql,firestore,storage,centrifugo]",
+]
+dev = [
+    "core[all]",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.25.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*"]
+
+[tool.setuptools.package-data]
+core = ["py.typed"]

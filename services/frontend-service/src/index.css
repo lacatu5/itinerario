@@ -1,0 +1,159 @@
+:root {
+
+  --page-bg: #FAFAFA;
+  --color-black: #1A1A1A;
+  --color-white: #FFFFFF;
+  --color-light-gray: #6B6B6B;
+  --color-medium-gray: #4A4A4A;
+  --color-dark-gray: #2E2E2E;
+  --color-header-gray: #F8F8F8;
+
+
+  --color-accent: #2563EB;
+  --color-accent-light: #3B82F6;
+  --color-accent-subtle: #EFF6FF;
+  --color-success: #059669;
+  --color-success-light: #D1FAE5;
+  --color-warning: #D97706;
+  --color-warning-light: #FEF3C7;
+  --color-error: #DC2626;
+  --color-error-light: #FEE2E2;
+
+
+  --color-primary: var(--color-black);
+  --color-secondary: var(--color-light-gray);
+  --color-dark: #111111;
+
+
+  --radius-lg: 24px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --radius-xl: 32px;
+  --border-radius-large: 24px;
+  --border-radius-small: 12px;
+
+
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 2.5rem;
+  --spacing-3xl: 3rem;
+
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.16);
+
+
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+
+  color-scheme: light;
+  color: var(--color-black);
+  background-color: var(--page-bg);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--page-bg);
+  border-radius: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+a {
+  color: var(--color-black);
+  text-decoration: none;
+}
+
+
+@media (max-width: 768px) {
+  :root {
+    --radius-lg: 16px;
+    --radius-md: 8px;
+    --radius-sm: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --spacing-md: 0.75rem;
+    --spacing-lg: 1rem;
+    --spacing-xl: 1.5rem;
+  }
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: auto;
+  background-color: var(--page-bg);
+  border-radius: 0;
+}
+
+h1 { font-size: 3.2em; line-height: 1.1; }
+
+button {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  padding: 0.75em 1.25em;
+  font-size: 1em;
+  font-weight: 600;
+  font-family: inherit;
+  background-color: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease, background-color 0.2s ease;
+}
+button:focus, button:focus-visible { outline: 2px solid #444; }
+
+
+.container { margin: 0 auto; padding: 0 1rem; }
+.rounded-lg { border-radius: var(--radius-lg); }
+.surface { background: var(--surface); }
+.surface-alt { background: var(--surface-alt); }
+.text-muted { color: var(--text-muted); }
+.border { border: 1px solid var(--border); }
+.shadow-soft { box-shadow: 0 40px 80px rgba(0,0,0,0.4); }
+
+
+.fade-in { animation: fadeIn 500ms ease both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+.hover-elevate { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+
+
+html, body, .App, .main-content, .route-wrapper, .ui-card {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.App::-webkit-scrollbar,
+.main-content::-webkit-scrollbar,
+.route-wrapper::-webkit-scrollbar,
+.ui-card::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}

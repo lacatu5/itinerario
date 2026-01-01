@@ -1,0 +1,845 @@
+
+namespace:
+  create: true
+  name: itinerario-prod
+  labels: {}
+  annotations: {}
+
+serviceAccount:
+  create: true
+  name: prod-workload-sa
+  annotations:
+    iam.gke.io/gcp-service-account: "prod-workload-sa@YOUR_PROJECT_ID.iam.gserviceaccount.com"
+  automount: true
+
+imageRegistry: YOUR_REGISTRY/itinerario
+imagePullPolicy: IfNotPresent
+
+secrets:
+  manageSecrets: true
+  firebaseConfig: "YOUR_BASE64_ENCODED_FIREBASE_CONFIG"
+  jwtSecret: "YOUR_PRODUCTION_JWT_SECRET"
+  dbUsername: "postgres"
+  dbPassword: "YOUR_PRODUCTION_DB_PASSWORD"
+  dbHost: "127.0.0.1"
+  dbPort: "5432"
+  dbName: "itinerario-prod"
+  cloudSqlConnectionName: "YOUR_PROJECT:REGION:INSTANCE_NAME"
+  firebaseProjectId: "YOUR_PROJECT_ID"
+  cloudStorageBucket: "YOUR_STORAGE_BUCKET"
+  aviationstackApiKey: "YOUR_AVIATIONSTACK_API_KEY"
+  centrifugoApiKey: "YOUR_CENTRIFUGO_API_KEY"
+  centrifugoHmacSecretKey: "YOUR_CENTRIFUGO_HMAC_SECRET"
+  centrifugoAdminPassword: "admin123"
+  centrifugoAdminSecret: "admin-secret"
+  flightSyncMode: "demo"
+
+centrifugo:
+  debug: false
+  adminEnabled: false
+  prometheusEnabled: true
+
+cloudSqlProxy:
+  image:
+    repository: gcr.io/cloud-sql-connectors/cloud-sql-proxy
+    tag: "2.8.0"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  connectionName: "YOUR_PROJECT:REGION:INSTANCE_NAME"
+
+gateway:
+  enabled: true
+  name: external-gateway
+  className: gke-l7-global-external-managed
+  annotations:
+    networking.gke.io/certmap: itinerario-cert-map
+  listeners:
+    - name: https
+      hostname: api.your-domain.com
+      port: 443
+      protocol: HTTPS
+    - name: http
+      hostname: api.your-domain.com
+      port: 80
+      protocol: HTTP
+    - name: https-www
+      hostname: www.your-domain.com
+      port: 443
+      protocol: HTTPS
+    - name: http-www
+      hostname: www.your-domain.com
+      port: 80
+      protocol: HTTP
+    - name: https-root
+      hostname: your-domain.com
+      port: 443
+      protocol: HTTPS
+    - name: http-root
+      hostname: your-domain.com
+      port: 80
+      protocol: HTTP
+
+httpRoutes:
+  - name: api-routes
+    hostnames:
+      - api.your-domain.com
+    parentRef:
+      sectionName: https
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api/users
+        backendRefs:
+          - name: user-service
+            port: 80
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api/auth
+        backendRefs:
+          - name: social-service
+            port: 80
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api/chat
+          - path:
+              type: PathPrefix
+              value: /api/ws
+        backendRefs:
+          - name: chat-service
+            port: 80
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /connection
+        backendRefs:
+          - name: centrifugo
+            port: 80
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api/social
+        backendRefs:
+          - name: social-service
+            port: 80
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api/images/location
+          - path:
+              type: PathPrefix
+              value: /api/images/itinerary
+        backendRefs:
+          - name: itinerary-service
+            port: 80
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api/itineraries
+          - path:
+              type: PathPrefix
+              value: /api/locations
+          - path:
+              type: PathPrefix
+              value: /api/transports
+        backendRefs:
+          - name: itinerary-service
+            port: 80
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api/destinations
+        backendRefs:
+          - name: destinations-service
+            port: 80
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /connection
+        backendRefs:
+          - name: centrifugo
+            port: 80
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api/travel-alerts
+        backendRefs:
+          - name: travel-alerts-service
+            port: 80
+  - name: frontend-routes
+    hostnames:
+      - www.your-domain.com
+    parentRef:
+      sectionName: https-www
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - name: frontend-service
+            port: 80
+  - name: frontend-routes-root
+    hostnames:
+      - your-domain.com
+    parentRef:
+      sectionName: https-root
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        backendRefs:
+          - name: frontend-service
+            port: 80
+
+serviceResources: {}
+
+services:
+  - name: frontend
+    enabled: true
+    image:
+      repository: frontend-service
+      tag: latest
+    replicas: 1
+    containerPort: 80
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+    service:
+      name: frontend-service
+      type: ClusterIP
+      ports:
+        - port: 80
+          targetPort: 80
+    cloudSqlProxy:
+      enabled: false
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+  - name: user-service
+    enabled: true
+    image:
+      repository: user-service
+      tag: latest
+    replicas: 1
+    containerPort: 8000
+    portName: user-api
+    resources:
+      requests:
+        cpu: 150m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+    service:
+      name: user-service
+      type: ClusterIP
+      ports:
+        - port: 80
+          targetPort: 8000
+    cloudSqlProxy:
+      enabled: true
+    env:
+      - name: DB_HOST
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_HOST
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: username
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: password
+      - name: DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_NAME
+      - name: DB_PORT
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_PORT
+      - name: DATABASE_URL
+        value: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
+      - name: JWT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: jwt-secret
+            key: secret
+      - name: CLOUD_STORAGE_BUCKET
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CLOUD_STORAGE_BUCKET
+      - name: CENTRIFUGO_API_URL
+        value: "http://centrifugo/api"
+      - name: CENTRIFUGO_WS_URL
+        value: "wss://api.your-domain.com/connection"
+      - name: CENTRIFUGO_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_API_KEY
+      - name: CENTRIFUGO_HMAC_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_HMAC_SECRET_KEY
+    livenessProbe:
+      path: /health
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      path: /health
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+  - name: chat-service
+    enabled: true
+    image:
+      repository: chat-service
+      tag: latest
+    replicas: 1
+    containerPort: 8000
+    portName: chat-api
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 600m
+        memory: 512Mi
+    service:
+      name: chat-service
+      type: ClusterIP
+      ports:
+        - port: 80
+          targetPort: 8000
+    cloudSqlProxy:
+      enabled: true
+    env:
+      - name: DB_HOST
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_HOST
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: username
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: password
+      - name: DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_NAME
+      - name: DB_PORT
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_PORT
+      - name: DATABASE_URL
+        value: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
+      - name: FIREBASE_PROJECT_ID
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: FIREBASE_PROJECT_ID
+      - name: ENVIRONMENT
+        value: "prod"
+      - name: CENTRIFUGO_API_URL
+        value: "http://centrifugo/api"
+      - name: CENTRIFUGO_WS_URL
+        value: "wss://api.your-domain.com/connection"
+      - name: CENTRIFUGO_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_API_KEY
+      - name: CENTRIFUGO_HMAC_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_HMAC_SECRET_KEY
+    livenessProbe:
+      path: /health
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      path: /health
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+  - name: social-service
+    enabled: true
+    image:
+      repository: social-service
+      tag: latest
+    replicas: 1
+    containerPort: 8000
+    portName: social-api
+    resources:
+      requests:
+        cpu: 300m
+        memory: 256Mi
+      limits:
+        cpu: 600m
+        memory: 512Mi
+    service:
+      name: social-service
+      type: ClusterIP
+      ports:
+        - port: 80
+          targetPort: 8000
+    cloudSqlProxy:
+      enabled: true
+    env:
+      - name: DB_HOST
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_HOST
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: username
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: password
+      - name: DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_NAME
+      - name: DB_PORT
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_PORT
+      - name: DATABASE_URL
+        value: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
+      - name: FIREBASE_PROJECT_ID
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: FIREBASE_PROJECT_ID
+      - name: ENVIRONMENT
+        value: "prod"
+      - name: CENTRIFUGO_API_URL
+        value: "http://centrifugo/api"
+      - name: CENTRIFUGO_WS_URL
+        value: "wss://api.your-domain.com/connection"
+      - name: CENTRIFUGO_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_API_KEY
+      - name: CENTRIFUGO_HMAC_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_HMAC_SECRET_KEY
+    livenessProbe:
+      path: /health
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      path: /health
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+  - name: itinerary-service
+    enabled: true
+    image:
+      repository: itinerary-service
+      tag: latest
+    replicas: 1
+    containerPort: 8000
+    portName: itinerary
+    resources:
+      requests:
+        cpu: 300m
+        memory: 256Mi
+      limits:
+        cpu: 600m
+        memory: 512Mi
+    service:
+      name: itinerary-service
+      type: ClusterIP
+      ports:
+        - port: 80
+          targetPort: 8000
+    cloudSqlProxy:
+      enabled: true
+    env:
+      - name: DB_HOST
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_HOST
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: username
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: password
+      - name: DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_NAME
+      - name: DB_PORT
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_PORT
+      - name: DATABASE_URL
+        value: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
+      - name: CLOUD_STORAGE_BUCKET
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CLOUD_STORAGE_BUCKET
+      - name: RESET_DB
+        value: "false"
+      - name: CENTRIFUGO_API_URL
+        value: "http://centrifugo/api"
+      - name: CENTRIFUGO_WS_URL
+        value: "wss://api.your-domain.com/connection"
+      - name: CENTRIFUGO_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_API_KEY
+      - name: CENTRIFUGO_HMAC_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_HMAC_SECRET_KEY
+    livenessProbe:
+      path: /health
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      path: /health
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+  - name: destinations-service
+    enabled: true
+    image:
+      repository: destinations-service
+      tag: latest
+    replicas: 1
+    containerPort: 8000
+    portName: destination
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+    service:
+      name: destinations-service
+      type: ClusterIP
+      ports:
+        - port: 80
+          targetPort: 8000
+    cloudSqlProxy:
+      enabled: true
+    env:
+      - name: DB_HOST
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_HOST
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: username
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: password
+      - name: DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_NAME
+      - name: DB_PORT
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_PORT
+      - name: DATABASE_URL
+        value: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
+      - name: CLOUD_STORAGE_BUCKET
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CLOUD_STORAGE_BUCKET
+      - name: ENVIRONMENT
+        value: "prod"
+      - name: CENTRIFUGO_API_URL
+        value: "http://centrifugo/api"
+      - name: CENTRIFUGO_WS_URL
+        value: "wss://api.your-domain.com/connection"
+      - name: CENTRIFUGO_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_API_KEY
+      - name: CENTRIFUGO_HMAC_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_HMAC_SECRET_KEY
+    livenessProbe:
+      path: /health
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      path: /health
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+  - name: travel-alerts-service
+    enabled: true
+    image:
+      repository: travel-alerts-service
+      tag: latest
+    replicas: 1
+    containerPort: 8000
+    portName: alerts-api
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+    service:
+      name: travel-alerts-service
+      type: ClusterIP
+      ports:
+        - port: 80
+          targetPort: 8000
+    cloudSqlProxy:
+      enabled: true
+    env:
+      - name: DB_HOST
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_HOST
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: username
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: database-credentials
+            key: password
+      - name: DB_NAME
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_NAME
+      - name: DB_PORT
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: DB_PORT
+      - name: DATABASE_URL
+        value: "postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)"
+      - name: FIREBASE_PROJECT_ID
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: FIREBASE_PROJECT_ID
+      - name: ENVIRONMENT
+        value: "prod"
+      - name: OPEN_METEO_AVAILABLE
+        value: "true"
+      - name: ENABLE_MOCK_DATA
+        value: "false"
+      - name: CENTRIFUGO_API_URL
+        value: "http://centrifugo/api"
+      - name: CENTRIFUGO_WS_URL
+        value: "wss://api.your-domain.com/connection"
+      - name: CENTRIFUGO_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_API_KEY
+      - name: CENTRIFUGO_HMAC_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_HMAC_SECRET_KEY
+    livenessProbe:
+      path: /health
+      initialDelaySeconds: 30
+      periodSeconds: 30
+    readinessProbe:
+      path: /health
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+  - name: centrifugo
+    enabled: true
+    image:
+      repository: centrifugo/centrifugo
+      tag: v5
+    replicas: 1
+    containerPort: 8000
+    portName: centrifugo
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 400m
+        memory: 512Mi
+    service:
+      name: centrifugo
+      type: ClusterIP
+      ports:
+        - port: 80
+          targetPort: 8000
+    env:
+      - name: CENTRIFUGO_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: CENTRIFUGO_API_KEY
+      - name: CENTRIFUGO_PORT
+        value: ""
+    envFrom:
+    - secretRef:
+        name: itinerario-secrets
+    livenessProbe:
+      path: /health
+      initialDelaySeconds: 10
+      periodSeconds: 30
+    readinessProbe:
+      path: /health
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+cronjobs:
+  - name: sync-flight-status
+    enabled: true
+    schedule: "*/30 * * * *"
+    image:
+      repository: travel-alerts-job
+      tag: latest
+    command:
+      - python
+      - -m
+      - app.jobs.sync_flights
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+    concurrencyPolicy: Forbid
+    restartPolicy: OnFailure
+    activeDeadlineSeconds: 300
+    backoffLimit: 2
+    successfulJobsHistoryLimit: 5
+    failedJobsHistoryLimit: 3
+    timeZone: UTC
+    env:
+      - name: FIREBASE_PROJECT_ID
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: FIREBASE_PROJECT_ID
+      - name: FLIGHT_SYNC_MODE
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: FLIGHT_SYNC_MODE
+      - name: AVIATIONSTACK_API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: AVIATIONSTACK_API_KEY
+
+  - name: sync-travel-warnings
+    enabled: true
+    schedule: "0 */6 * * *"
+    image:
+      repository: travel-alerts-job
+      tag: latest
+    command:
+      - python
+      - -m
+      - app.jobs.sync_travel_warnings
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+    concurrencyPolicy: Forbid
+    restartPolicy: OnFailure
+    activeDeadlineSeconds: 600
+    backoffLimit: 2
+    successfulJobsHistoryLimit: 5
+    failedJobsHistoryLimit: 3
+    timeZone: UTC
+    env:
+      - name: FIREBASE_PROJECT_ID
+        valueFrom:
+          secretKeyRef:
+            name: itinerario-secrets
+            key: FIREBASE_PROJECT_ID

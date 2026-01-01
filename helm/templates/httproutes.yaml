@@ -1,0 +1,45 @@
+{{- range .Values.httpRoutes }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace.name | quote }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ $.Values.gateway.name }}
+      namespace: {{ $.Values.namespace.name | quote }}
+      sectionName: {{ .parentRef.sectionName }}
+  hostnames:
+    {{- range .hostnames }}
+    - {{ . }}
+    {{- end }}
+  rules:
+    {{- range .rules }}
+    - matches:
+        {{- range .matches }}
+        - path:
+            type: {{ .path.type }}
+            value: {{ .path.value }}
+        {{- end }}
+      {{- if .filters }}
+      filters:
+        {{- toYaml .filters | nindent 8 }}
+      {{- end }}
+      backendRefs:
+        {{- range .backendRefs }}
+        - group: ""
+          kind: Service
+          name: {{ .name }}
+          port: {{ .port }}
+        {{- end }}
+    {{- end }}
+---
+{{- end }}

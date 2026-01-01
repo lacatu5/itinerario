@@ -1,0 +1,157 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Test & type checking caches
+.pytest_cache/
+.mypy_cache/
+.cache/
+.ruff_cache/
+.unimportedrc.json
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+me-only/
+
+# Build and packaging
+build/
+dist/
+fastapi-services-master/
+*.egg-info/
+*.trae
+
+# Coverage reports
+.coverage
+*.coverage
+htmlcov/
+coverage/
+coverage*.json
+*.lcov
+
+# Byte-compiled C extensions
+*.so
+
+# Editor/IDE settings
+.vscode/
+.idea/
+
+# Keep specific VSCode files for team
+!.vscode/extensions.json
+!.vscode/settings.json
+# But ignore personal configs
+.vscode/launch.json
+.vscode/tasks.json
+.vscode/copilot.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node.js
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.env
+storage-key.json
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform.tfstate.lock.info
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Helm
+**/charts/secrets/
+**/helm/*/secrets/
+**/.helm/cache/
+**/.helm/data/
+**/.helm/repository/
+
+# Kubernetes secrets
+**/k8s/secrets/*.yaml
+**/secrets/
+**/*.key
+**/*.pem
+**/*.crt
+**/service-account-key.json
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+config/production.yaml
+config/staging.yaml
+.secrets/
+secrets/
+**/credentials/
+**/keys/
+
+# But allow example files
+!*.example.json
+
+# Config files with placeholders (should use .env.example instead)
+config/centrifugo/config.json
+!config/centrifugo/config.json.example
+
+# Google Cloud
+gcloud-credentials.json
+service-account-key.json
+*.json.gpg
+application_default_credentials.json
+
+# Docker
+.dockerignore
+.docker/
+**/.dockerignore
+.fastapi-chat-master/
+fastapi-chat-master/
+.local/
+local/
+dispatch-main/
+.dispatch-main/
+claude-user-memory/
+.claude-user-memory/
+
+# Test files
+**/__mocks__/
+**/*.test.js
+**/*.test.jsx
+**/*.test.ts
+**/*.test.tsx
+**/setupTests.js
+babel.config.js
+jest.config.js
+eslint.config.js

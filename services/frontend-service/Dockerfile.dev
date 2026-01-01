@@ -1,0 +1,18 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY services/frontend-service/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY services/frontend-service/ .
+
+# Expose port
+EXPOSE 5173
+
+# Development command
+CMD ["npm", "run", "dev"]
